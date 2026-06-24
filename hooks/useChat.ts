@@ -42,11 +42,9 @@ export function useChat(conversationId: string) {
             let activeConversationId = conversationId
 
             if (conversationId === 'new') {
-                // Create conversation first, get the real ID back
                 activeConversationId = await createConversation(content.trim())
             }
 
-            // Now save user message with the confirmed ID
             await saveMessage(activeConversationId, 'user', content.trim())
 
             const response = await fetch('/api/chat', {
@@ -61,7 +59,17 @@ export function useChat(conversationId: string) {
                 }),
             })
 
-            if (!response.ok) throw new Error('Failed to get response')
+            if (!response.ok) {
+                if (response.status === 429) {
+                    const data = await response.json()
+                    throw new Error(data.error)
+                }
+                if (response.status === 401) {
+                    throw new Error('You must be signed in to send messages.')
+                }
+                throw new Error('Failed to get response')
+            }
+
             if (!response.body) throw new Error('No response body')
 
             const reader = response.body.getReader()
@@ -92,7 +100,6 @@ export function useChat(conversationId: string) {
 
             await saveMessage(activeConversationId, 'assistant', fullContent)
 
-            // Navigate and refresh after everything is saved
             if (conversationId === 'new') {
                 router.push(`/chat/${activeConversationId}`)
             }
@@ -101,7 +108,8 @@ export function useChat(conversationId: string) {
 
         } catch (err) {
             console.error(err)
-            setError('Something went wrong. Please try again.')
+            const message = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+            setError(message)
             setMessages(prev => prev.filter(m => m.id !== assistantId))
         } finally {
             setIsLoading(false)

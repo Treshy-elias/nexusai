@@ -17,7 +17,7 @@ export interface Conversation {
 export interface Message {
   id: string
   conversation_id: string
-  role: 'user' | 'assistant'
+  role: number
   content: string
   created_at: string
 }
