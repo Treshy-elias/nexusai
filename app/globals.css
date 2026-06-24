@@ -2,16 +2,8 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --unknown: #ff0000;
-  }
+  --background: #09090b;
+  --foreground: #e4e4e7;
 }
 
 body {

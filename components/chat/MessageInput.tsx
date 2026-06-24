@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Send } from 'lucide-react'
+import { ArrowUp } from 'lucide-react'
 
 interface MessageInputProps {
   value: string
@@ -28,29 +28,29 @@ export default function MessageInput({ value, onChange, onSend, disabled }: Mess
   }
 
   return (
-    <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+    <div className="px-4 py-4 border-t border-zinc-800/80 bg-zinc-900/40 backdrop-blur-sm">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-end gap-3 bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-3">
+        <div className="flex items-end gap-3 bg-zinc-900 border border-zinc-700 hover:border-zinc-600 focus-within:border-cyan-500/50 focus-within:ring-2 focus-within:ring-cyan-500/10 rounded-2xl px-4 py-3 transition-all duration-200">
           <textarea
             ref={textareaRef}
             value={value}
             onChange={e => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="Message NexusAI..."
+            placeholder="Ask NexusAI anything..."
             rows={1}
-            className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:outline-none min-h-[24px] max-h-[200px] leading-6"
+            className="flex-1 bg-transparent text-sm text-zinc-200 placeholder-zinc-600 resize-none focus:outline-none min-h-[24px] max-h-[200px] leading-6 font-normal"
           />
           <button
             onClick={onSend}
             disabled={disabled || !value.trim()}
-            className="w-8 h-8 flex items-center justify-center rounded-xl bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150 shrink-0 shadow-md shadow-cyan-500/20"
           >
-            <Send className="w-4 h-4" />
+            <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
           </button>
         </div>
-        <p className="text-xs text-gray-400 text-center mt-2">
-          Press Enter to send, Shift+Enter for new line
+        <p className="text-[11px] text-zinc-700 text-center mt-2 font-medium tracking-wide">
+          Enter to send · Shift+Enter for new line
         </p>
       </div>
     </div>
