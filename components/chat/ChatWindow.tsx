@@ -1,16 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useChat } from '@/hooks/useChat'
 import MessageBubble from './MessageBubble'
 import MessageInput from './MessageInput'
 import TypingIndicator from './TypingIndicator'
 import { Zap, Code2, FileText, Lightbulb, PenLine } from 'lucide-react'
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
 
 const SUGGESTIONS = [
   { icon: Code2,     label: 'Write a Python script' },
@@ -20,37 +15,19 @@ const SUGGESTIONS = [
 ]
 
 export default function ChatWindow({ conversationId }: { conversationId: string }) {
-  const [messages, setMessages] = useState<Message[]>([])
+  const { messages, isLoading, error, sendMessage } = useChat(conversationId)
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
 
-  function handleSend() {
+  async function handleSend() {
     if (!input.trim() || isLoading) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input.trim(),
-    }
-
-    setMessages(prev => [...prev, userMessage])
+    const text = input.trim()
     setInput('')
-    setIsLoading(true)
-
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'This is a placeholder response. AI integration coming in Layer 4.',
-      }
-      setMessages(prev => [...prev, aiMessage])
-      setIsLoading(false)
-    }, 1500)
+    await sendMessage(text)
   }
 
   return (
@@ -65,7 +42,6 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
           <h1 className="text-sm font-bold text-white tracking-tight">NexusAI</h1>
           <p className="text-[11px] text-zinc-500 font-medium">Gemini 2.5 Flash</p>
         </div>
-        {/* Live indicator */}
         <div className="ml-auto flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[11px] text-zinc-500 font-medium">Online</span>
@@ -110,11 +86,20 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
             key={message.id}
             role={message.role}
             content={message.content}
-            isStreaming={false}
+            isStreaming={message.isStreaming}
           />
         ))}
 
-        {isLoading && <TypingIndicator />}
+        {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
+          <TypingIndicator />
+        )}
+
+        {error && (
+          <div className="mx-6 my-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 

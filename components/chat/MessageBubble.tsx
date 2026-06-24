@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Copy, Check, Zap, User } from 'lucide-react'
+import MarkdownRenderer from './MarkdownRenderer'
 
 interface MessageBubbleProps {
   role: 'user' | 'assistant'
@@ -42,19 +43,24 @@ export default function MessageBubble({ role, content, isStreaming }: MessageBub
           {isUser ? 'You' : 'NexusAI'}
         </span>
 
-        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed font-normal ${
+        <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
             ? 'bg-zinc-800 text-zinc-100 rounded-tr-sm border border-zinc-700'
             : 'bg-zinc-900 text-zinc-200 rounded-tl-sm border border-zinc-800'
         }`}>
-          <p className="whitespace-pre-wrap break-words">{content}</p>
-          {isStreaming && (
-            <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse rounded-sm" />
+          {isUser ? (
+            <p className="whitespace-pre-wrap break-words">{content}</p>
+          ) : (
+            <div className="prose-sm max-w-none">
+              <MarkdownRenderer content={content} />
+              {isStreaming && (
+                <span className="inline-block w-1.5 h-4 bg-cyan-400 ml-0.5 animate-pulse rounded-sm" />
+              )}
+            </div>
           )}
         </div>
 
-        {/* Copy */}
-        {!isUser && !isStreaming && (
+        {!isUser && !isStreaming && content && (
           <button
             onClick={copyToClipboard}
             className="mt-1.5 flex items-center gap-1 text-[11px] text-zinc-600 hover:text-zinc-400 opacity-0 group-hover:opacity-100 transition-all duration-150"
