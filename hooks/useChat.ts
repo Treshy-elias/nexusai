@@ -1,97 +1,117 @@
 import { useState, useCallback } from 'react'
+import { createConversation, saveMessage } from '@/app/(dashboard)/actions'
+import { useRouter } from 'next/navigation'
 
 export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isStreaming?: boolean
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    isStreaming?: boolean
 }
 
 export function useChat(conversationId: string) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+    const [messages, setMessages] = useState<Message[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const router = useRouter()
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading) return
+    const sendMessage = useCallback(async (content: string) => {
+        if (!content.trim() || isLoading) return
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: content.trim(),
-    }
+        const userMessage: Message = {
+            id: Date.now().toString(),
+            role: 'user',
+            content: content.trim(),
+        }
 
-    const updatedMessages = [...messages, userMessage]
-    setMessages(updatedMessages)
-    setIsLoading(true)
-    setError(null)
+        const updatedMessages = [...messages, userMessage]
+        setMessages(updatedMessages)
+        setIsLoading(true)
+        setError(null)
 
-    const assistantId = (Date.now() + 1).toString()
-    const assistantMessage: Message = {
-      id: assistantId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-    }
+        const assistantId = (Date.now() + 1).toString()
 
-    setMessages(prev => [...prev, assistantMessage])
+        setMessages(prev => [...prev, {
+            id: assistantId,
+            role: 'assistant',
+            content: '',
+            isStreaming: true,
+        }])
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: updatedMessages.map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-          conversationId,
-        }),
-      })
+        try {
+            let activeConversationId = conversationId
 
-      if (!response.ok) throw new Error('Failed to get response')
-      if (!response.body) throw new Error('No response body')
+            if (conversationId === 'new') {
+                // Create conversation first, get the real ID back
+                activeConversationId = await createConversation(content.trim())
+            }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let fullContent = ''
+            // Now save user message with the confirmed ID
+            await saveMessage(activeConversationId, 'user', content.trim())
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: updatedMessages.map(m => ({
+                        role: m.role,
+                        content: m.content,
+                    })),
+                    conversationId: activeConversationId,
+                }),
+            })
 
-        const chunk = decoder.decode(value, { stream: true })
-        fullContent += chunk
+            if (!response.ok) throw new Error('Failed to get response')
+            if (!response.body) throw new Error('No response body')
 
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantId
-              ? { ...m, content: fullContent, isStreaming: true }
-              : m
-          )
-        )
-      }
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            let fullContent = ''
 
-      // Streaming done — remove isStreaming flag
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantId
-            ? { ...m, content: fullContent, isStreaming: false }
-            : m
-        )
-      )
-    } catch (err) {
-      setError('Something went wrong. Please try again.')
-      setMessages(prev => prev.filter(m => m.id !== assistantId))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [messages, isLoading, conversationId])
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                const chunk = decoder.decode(value, { stream: true })
+                fullContent += chunk
+                setMessages(prev =>
+                    prev.map(m =>
+                        m.id === assistantId
+                            ? { ...m, content: fullContent, isStreaming: true }
+                            : m
+                    )
+                )
+            }
 
-  const clearMessages = useCallback(() => {
-    setMessages([])
-    setError(null)
-  }, [])
+            setMessages(prev =>
+                prev.map(m =>
+                    m.id === assistantId
+                        ? { ...m, content: fullContent, isStreaming: false }
+                        : m
+                )
+            )
 
-  return { messages, isLoading, error, sendMessage, clearMessages, setMessages }
+            await saveMessage(activeConversationId, 'assistant', fullContent)
+
+            // Navigate and refresh after everything is saved
+            if (conversationId === 'new') {
+                router.push(`/chat/${activeConversationId}`)
+            }
+
+            router.refresh()
+
+        } catch (err) {
+            console.error(err)
+            setError('Something went wrong. Please try again.')
+            setMessages(prev => prev.filter(m => m.id !== assistantId))
+        } finally {
+            setIsLoading(false)
+        }
+    }, [messages, isLoading, conversationId, router])
+
+    const clearMessages = useCallback(() => {
+        setMessages([])
+        setError(null)
+    }, [])
+
+    return { messages, isLoading, error, sendMessage, clearMessages, setMessages }
 }

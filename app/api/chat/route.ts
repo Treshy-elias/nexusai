@@ -15,10 +15,12 @@ export async function POST(request: Request) {
 
     const chat = ai.chats.create({
       model: 'gemini-2.5-flash',
-      system: `You are NexusAI, a helpful, smart, and friendly AI assistant.
+      config: {
+        systemInstruction: `You are NexusAI, a helpful, smart, and friendly AI assistant.
 You give clear, accurate, and well-structured responses.
 When writing code, always specify the language for syntax highlighting.
 Be concise but thorough.`,
+      },
       history,
     })
 
@@ -48,10 +50,9 @@ Be concise but thorough.`,
         'Transfer-Encoding': 'chunked',
       },
     })
-  } catch (error) {
-    console.error('Gemini API error:', error)
+  } catch (error: any) {
     return new Response(
-      JSON.stringify({ error: 'Failed to generate response' }),
+      JSON.stringify({ error: error?.message || 'Failed to generate response' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
