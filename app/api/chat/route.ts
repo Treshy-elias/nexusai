@@ -1,18 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
 
 export async function POST(request: Request) {
   try {
     const { messages } = await request.json()
-
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: `You are NexusAI, a helpful, smart, and friendly AI assistant. 
-You give clear, accurate, and well-structured responses.
-When writing code, always specify the language for syntax highlighting.
-Be concise but thorough.`,
-    })
 
     const history = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
@@ -21,16 +13,23 @@ Be concise but thorough.`,
 
     const lastMessage = messages[messages.length - 1].content
 
-    const chat = model.startChat({ history })
+    const chat = ai.chats.create({
+      model: 'gemini-2.5-flash',
+      system: `You are NexusAI, a helpful, smart, and friendly AI assistant.
+You give clear, accurate, and well-structured responses.
+When writing code, always specify the language for syntax highlighting.
+Be concise but thorough.`,
+      history,
+    })
 
-    const result = await chat.sendMessageStream(lastMessage)
+    const stream = await chat.sendMessageStream({ message: lastMessage })
 
-    const stream = new ReadableStream({
+    const readableStream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder()
         try {
-          for await (const chunk of result.stream) {
-            const text = chunk.text()
+          for await (const chunk of stream) {
+            const text = chunk.text
             if (text) {
               controller.enqueue(encoder.encode(text))
             }
@@ -43,7 +42,7 @@ Be concise but thorough.`,
       },
     })
 
-    return new Response(stream, {
+    return new Response(readableStream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Transfer-Encoding': 'chunked',
